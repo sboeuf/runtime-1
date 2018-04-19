@@ -9,6 +9,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"syscall"
 
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	"github.com/kata-containers/runtime/virtcontainers/pkg/oci"
@@ -71,22 +72,13 @@ func delete(containerID string, force bool) error {
 		return err
 	}
 
-	forceStop := false
-	if oci.StateToOCIState(status.State) == oci.StateRunning {
-		if !force {
-			return fmt.Errorf("Container still running, should be stopped")
-		}
-
-		forceStop = true
-	}
-
 	switch containerType {
 	case vc.PodSandbox:
-		if err := deleteSandbox(sandboxID); err != nil {
+		if err := deleteSandbox(sandboxID, containerID, status, force); err != nil {
 			return err
 		}
 	case vc.PodContainer:
-		if err := deleteContainer(sandboxID, containerID, forceStop); err != nil {
+		if err := deleteContainer(sandboxID, containerID, status, force); err != nil {
 			return err
 		}
 	default:
@@ -104,9 +96,32 @@ func delete(containerID string, force bool) error {
 	return removeCgroupsPath(containerID, cgroupsPathList)
 }
 
-func deleteSandbox(sandboxID string) error {
-	if _, err := vci.StopSandbox(sandboxID); err != nil {
+func deleteSandbox(sandboxID, containerID string, cStatus vc.ContainerStatus, force bool) error {
+	sStatus, err := vc.StatusSandbox(sandboxID)
+	if err != nil {
 		return err
+	}
+
+	forceStop := false
+
+	if oci.StateToOCIState(sStatus.State) == oci.StateRunning {
+		if !force {
+			return fmt.Errorf("Sandbox still running, should be stopped")
+		}
+
+		forceStop = true
+	}
+
+	if forceStop {
+		if oci.StateToOCIState(cStatus.State) == oci.StateRunning {
+			if err := vci.KillContainer(sandboxID, containerID, syscall.SIGKILL, true); err != nil {
+				return err
+			}
+		}
+
+		if _, err := vci.StopSandbox(sandboxID); err != nil {
+			return err
+		}
 	}
 
 	if _, err := vci.DeleteSandbox(sandboxID); err != nil {
@@ -116,8 +131,22 @@ func deleteSandbox(sandboxID string) error {
 	return nil
 }
 
-func deleteContainer(sandboxID, containerID string, forceStop bool) error {
+func deleteContainer(sandboxID, containerID string, status vc.ContainerStatus, force bool) error {
+	forceStop := false
+
+	if oci.StateToOCIState(status.State) == oci.StateRunning {
+		if !force {
+			return fmt.Errorf("Container still running, should be stopped")
+		}
+
+		forceStop = true
+	}
+
 	if forceStop {
+		if err := vci.KillContainer(sandboxID, containerID, syscall.SIGKILL, true); err != nil {
+			return err
+		}
+
 		if _, err := vci.StopContainer(sandboxID, containerID); err != nil {
 			return err
 		}
