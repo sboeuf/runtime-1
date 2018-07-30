@@ -124,6 +124,7 @@ var runtimeCommands = []cli.Command{
 	// Kata Containers specific extensions
 	kataCheckCLICommand,
 	kataEnvCLICommand,
+	kataNetworkCLICommand,
 	factoryCLICommand,
 }
 
