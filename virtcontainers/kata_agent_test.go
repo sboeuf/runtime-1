@@ -201,6 +201,14 @@ func (p *gRPCProxy) UpdateRoutes(ctx context.Context, req *pb.UpdateRoutesReques
 	return nil, nil
 }
 
+func (p *gRPCProxy) ListInterfaces(ctx context.Context, req *pb.ListInterfacesRequest) (*pb.Interfaces, error) {
+	return nil, nil
+}
+
+func (p *gRPCProxy) ListRoutes(ctx context.Context, req *pb.ListRoutesRequest) (*pb.Routes, error) {
+	return nil, nil
+}
+
 func (p *gRPCProxy) OnlineCPUMem(ctx context.Context, req *pb.OnlineCPUMemRequest) (*gpb.Empty, error) {
 	return emptyResp, nil
 }
