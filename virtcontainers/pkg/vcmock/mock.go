@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"syscall"
 
+	"github.com/kata-containers/agent/protocols/grpc"
 	vc "github.com/kata-containers/runtime/virtcontainers"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
@@ -238,4 +239,49 @@ func (m *VCMock) ResumeContainer(sandboxID, containerID string) error {
 	}
 
 	return fmt.Errorf("%s: %s (%+v): sandboxID: %v, containerID: %v", mockErrorPrefix, getSelf(), m, sandboxID, containerID)
+}
+
+// AddInterface implements the VC function of the same name.
+func (m *VCMock) AddInterface(sandboxID string, inf *grpc.Interface) (*grpc.Interface, error) {
+	if m.AddInterfaceFunc != nil {
+		return m.AddInterfaceFunc(sandboxID, inf)
+	}
+
+	return nil, fmt.Errorf("%s: %s (%+v): sandboxID: %v", mockErrorPrefix, getSelf(), m, sandboxID)
+}
+
+// RemoveInterface implements the VC function of the same name.
+func (m *VCMock) RemoveInterface(sandboxID string, inf *grpc.Interface) (*grpc.Interface, error) {
+	if m.RemoveInterfaceFunc != nil {
+		return m.RemoveInterfaceFunc(sandboxID, inf)
+	}
+
+	return nil, fmt.Errorf("%s: %s (%+v): sandboxID: %v", mockErrorPrefix, getSelf(), m, sandboxID)
+}
+
+// ListInterfaces implements the VC function of the same name.
+func (m *VCMock) ListInterfaces(sandboxID string) ([]*grpc.Interface, error) {
+	if m.ListInterfacesFunc != nil {
+		return m.ListInterfacesFunc(sandboxID)
+	}
+
+	return nil, fmt.Errorf("%s: %s (%+v): sandboxID: %v", mockErrorPrefix, getSelf(), m, sandboxID)
+}
+
+// UpdateRoutes implements the VC function of the same name.
+func (m *VCMock) UpdateRoutes(sandboxID string, routes []*grpc.Route) ([]*grpc.Route, error) {
+	if m.UpdateRoutesFunc != nil {
+		return m.UpdateRoutesFunc(sandboxID, routes)
+	}
+
+	return nil, fmt.Errorf("%s: %s (%+v): sandboxID: %v", mockErrorPrefix, getSelf(), m, sandboxID)
+}
+
+// ListRoutes implements the VC function of the same name.
+func (m *VCMock) ListRoutes(sandboxID string) ([]*grpc.Route, error) {
+	if m.ListRoutesFunc != nil {
+		return m.ListRoutesFunc(sandboxID)
+	}
+
+	return nil, fmt.Errorf("%s: %s (%+v): sandboxID: %v", mockErrorPrefix, getSelf(), m, sandboxID)
 }

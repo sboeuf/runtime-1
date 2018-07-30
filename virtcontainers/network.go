@@ -156,6 +156,8 @@ type Endpoint interface {
 	SetProperties(NetworkInfo)
 	Attach(hypervisor) error
 	Detach(netNsCreated bool, netNsPath string) error
+	HotAttach(h hypervisor) error
+	HotDetach(h hypervisor, netNsCreated bool, netNsPath string) error
 }
 
 // VirtualEndpoint gathers a network pair and its properties.
@@ -164,6 +166,7 @@ type VirtualEndpoint struct {
 	EndpointProperties NetworkInfo
 	Physical           bool
 	EndpointType       EndpointType
+	PCIAddr            string
 }
 
 // PhysicalEndpoint gathers a physical network interface and its properties
@@ -247,6 +250,41 @@ func (endpoint *VirtualEndpoint) Detach(netNsCreated bool, netNsPath string) err
 	})
 }
 
+// HotAttach for the virtual endpoint uses hot plug device
+func (endpoint *VirtualEndpoint) HotAttach(h hypervisor) error {
+	networkLogger().Info("Hot attaching virtual endpoint")
+	if err := xconnectVMNetwork(&(endpoint.NetPair), true); err != nil {
+		networkLogger().WithError(err).Error("Error bridging virtual ep")
+		return err
+	}
+
+	if _, err := h.hotplugAddDevice(*endpoint, netDev); err != nil {
+		networkLogger().WithError(err).Error("Error attach virtual ep")
+		return err
+	}
+	return nil
+}
+
+// HotDetach for the virtual endpoint uses hot pull device
+func (endpoint *VirtualEndpoint) HotDetach(h hypervisor, netNsCreated bool, netNsPath string) error {
+	if !netNsCreated {
+		return nil
+	}
+	networkLogger().Info("Hot detaching virtual endpoint")
+	if err := doNetNS(netNsPath, func(_ ns.NetNS) error {
+		return xconnectVMNetwork(&(endpoint.NetPair), false)
+	}); err != nil {
+		networkLogger().WithError(err).Error("Error abridging virtual ep")
+		return err
+	}
+
+	if _, err := h.hotplugRemoveDevice(*endpoint, netDev); err != nil {
+		networkLogger().WithError(err).Error("Error detach virtual ep")
+		return err
+	}
+	return nil
+}
+
 // Properties returns the properties of the interface.
 func (endpoint *VhostUserEndpoint) Properties() NetworkInfo {
 	return endpoint.EndpointProperties
@@ -296,6 +334,16 @@ func (endpoint *VhostUserEndpoint) Attach(h hypervisor) error {
 func (endpoint *VhostUserEndpoint) Detach(netNsCreated bool, netNsPath string) error {
 	networkLogger().WithField("endpoint-type", "vhostuser").Info("Detaching endpoint")
 	return nil
+}
+
+// HotAttach for vhostuser endpoint not supported yet
+func (endpoint *VhostUserEndpoint) HotAttach(h hypervisor) error {
+	return fmt.Errorf("VhostUserEndpoint does not support Hot attach")
+}
+
+// HotDetach for vhostuser endpoint not supported yet
+func (endpoint *VhostUserEndpoint) HotDetach(h hypervisor, netNsCreated bool, netNsPath string) error {
+	return fmt.Errorf("VhostUserEndpoint does not support Hot detach")
 }
 
 // Create a vhostuser endpoint
@@ -365,6 +413,16 @@ func (endpoint *PhysicalEndpoint) Detach(netNsCreated bool, netNsPath string) er
 	// We do not need to enter the network namespace to bind back the
 	// physical interface to host driver.
 	return bindNICToHost(endpoint)
+}
+
+// HotAttach for physical endpoint not supported yet
+func (endpoint *PhysicalEndpoint) HotAttach(h hypervisor) error {
+	return fmt.Errorf("PhysicalEndpoint does not support Hot attach")
+}
+
+// HotDetach for physical endpoint not supported yet
+func (endpoint *PhysicalEndpoint) HotDetach(h hypervisor, netNsCreated bool, netNsPath string) error {
+	return fmt.Errorf("PhysicalEndpoint does not support Hot detach")
 }
 
 // EndpointType identifies the type of the network endpoint.
@@ -1056,33 +1114,6 @@ func bridgeNetworkPair(netPair *NetworkInterfacePair) error {
 	}
 	netPair.VhostFds = vhostFds
 
-	vethLink, err := getLinkByName(netHandle, netPair.VirtIface.Name, &netlink.Veth{})
-	if err != nil {
-		return fmt.Errorf("Could not get veth interface %s : %s", netPair.VirtIface.Name, err)
-	}
-
-	vethLinkAttrs := vethLink.Attrs()
-
-	// Save the veth MAC address to the TAP so that it can later be used
-	// to build the hypervisor command line. This MAC address has to be
-	// the one inside the VM in order to avoid any firewall issues. The
-	// bridge created by the network plugin on the host actually expects
-	// to see traffic from this MAC address and not another one.
-	netPair.TAPIface.HardAddr = vethLinkAttrs.HardwareAddr.String()
-
-	if err := netHandle.LinkSetMTU(tapLink, vethLinkAttrs.MTU); err != nil {
-		return fmt.Errorf("Could not set TAP MTU %d: %s", vethLinkAttrs.MTU, err)
-	}
-
-	hardAddr, err := net.ParseMAC(netPair.VirtIface.HardAddr)
-	if err != nil {
-		return err
-	}
-	if err := netHandle.LinkSetHardwareAddr(vethLink, hardAddr); err != nil {
-		return fmt.Errorf("Could not set MAC address %s for veth interface %s: %s",
-			netPair.VirtIface.HardAddr, netPair.VirtIface.Name, err)
-	}
-
 	mcastSnoop := false
 	bridgeLink, _, err := createLink(netHandle, netPair.Name, &netlink.Bridge{MulticastSnooping: &mcastSnoop})
 	if err != nil {
@@ -1098,13 +1129,40 @@ func bridgeNetworkPair(netPair *NetworkInterfacePair) error {
 		return fmt.Errorf("Could not enable TAP %s: %s", netPair.TAPIface.Name, err)
 	}
 
-	if err := netHandle.LinkSetMaster(vethLink, bridgeLink.(*netlink.Bridge)); err != nil {
-		return fmt.Errorf("Could not attach veth %s to the bridge %s: %s",
-			netPair.VirtIface.Name, netPair.Name, err)
-	}
+	if vethLink, err := getLinkByName(netHandle, netPair.VirtIface.Name, &netlink.Veth{}); err == nil {
+		vethLinkAttrs := vethLink.Attrs()
 
-	if err := netHandle.LinkSetUp(vethLink); err != nil {
-		return fmt.Errorf("Could not enable veth %s: %s", netPair.VirtIface.Name, err)
+		// Save the veth MAC address to the TAP so that it can later be used
+		// to build the hypervisor command line. This MAC address has to be
+		// the one inside the VM in order to avoid any firewall issues. The
+		// bridge created by the network plugin on the host actually expects
+		// to see traffic from this MAC address and not another one.
+		if netPair.TAPIface.HardAddr == "" {
+			netPair.TAPIface.HardAddr = vethLinkAttrs.HardwareAddr.String()
+		}
+
+		if err := netHandle.LinkSetMTU(tapLink, vethLinkAttrs.MTU); err != nil {
+			return fmt.Errorf("Could not set TAP MTU %d: %s", vethLinkAttrs.MTU, err)
+		}
+
+		hardAddr, err := net.ParseMAC(netPair.VirtIface.HardAddr)
+		if err != nil {
+			return err
+		}
+
+		if err := netHandle.LinkSetHardwareAddr(vethLink, hardAddr); err != nil {
+			return fmt.Errorf("Could not set MAC address %s for veth interface %s: %s",
+				netPair.VirtIface.HardAddr, netPair.VirtIface.Name, err)
+		}
+
+		if err := netHandle.LinkSetMaster(vethLink, bridgeLink.(*netlink.Bridge)); err != nil {
+			return fmt.Errorf("Could not attach veth %s to the bridge %s: %s",
+				netPair.VirtIface.Name, netPair.Name, err)
+		}
+
+		if err := netHandle.LinkSetUp(vethLink); err != nil {
+			return fmt.Errorf("Could not enable veth %s: %s", netPair.VirtIface.Name, err)
+		}
 	}
 
 	if err := netHandle.LinkSetUp(bridgeLink); err != nil {
@@ -1256,7 +1314,7 @@ func deleteNetNS(netNSPath string) error {
 	return nil
 }
 
-func createVirtualNetworkEndpoint(idx int, ifName string, interworkingModel NetInterworkingModel) (*VirtualEndpoint, error) {
+func createVirtualNetworkEndpoint(idx int, ifName, tapName, hwAddr string, interworkingModel NetInterworkingModel) (*VirtualEndpoint, error) {
 	if idx < 0 {
 		return &VirtualEndpoint{}, fmt.Errorf("invalid network endpoint index: %d", idx)
 	}
@@ -1286,6 +1344,14 @@ func createVirtualNetworkEndpoint(idx int, ifName string, interworkingModel NetI
 
 	if ifName != "" {
 		endpoint.NetPair.VirtIface.Name = ifName
+	}
+
+	if tapName != "" {
+		endpoint.NetPair.TAPIface.Name = tapName
+	}
+
+	if hwAddr != "" {
+		endpoint.NetPair.TAPIface.HardAddr = hwAddr
 	}
 
 	return endpoint, nil
@@ -1384,7 +1450,7 @@ func createEndpointsFromScan(networkNSPath string, config NetworkConfig) ([]Endp
 					cnmLogger().WithField("interface", netInfo.Iface.Name).Info("VhostUser network interface found")
 					endpoint, err = createVhostUserEndpoint(netInfo, socketPath)
 				} else {
-					endpoint, err = createVirtualNetworkEndpoint(idx, netInfo.Iface.Name, config.InterworkingModel)
+					endpoint, err = createVirtualNetworkEndpoint(idx, netInfo.Iface.Name, "", "", config.InterworkingModel)
 				}
 			}
 

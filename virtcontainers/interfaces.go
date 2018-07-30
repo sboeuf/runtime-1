@@ -9,7 +9,8 @@ import (
 	"io"
 	"syscall"
 
-	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/kata-containers/agent/protocols/grpc"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,6 +42,12 @@ type VC interface {
 	UpdateContainer(sandboxID, containerID string, resources specs.LinuxResources) error
 	PauseContainer(sandboxID, containerID string) error
 	ResumeContainer(sandboxID, containerID string) error
+
+	AddInterface(sandboxID string, inf *grpc.Interface) (*grpc.Interface, error)
+	RemoveInterface(sandboxID string, inf *grpc.Interface) (*grpc.Interface, error)
+	ListInterfaces(sandboxID string) ([]*grpc.Interface, error)
+	UpdateRoutes(sandboxID string, routes []*grpc.Route) ([]*grpc.Route, error)
+	ListRoutes(sandboxID string) ([]*grpc.Route, error)
 }
 
 // VCSandbox is the Sandbox interface
@@ -70,6 +77,12 @@ type VCSandbox interface {
 	SignalProcess(containerID, processID string, signal syscall.Signal, all bool) error
 	WinsizeProcess(containerID, processID string, height, width uint32) error
 	IOStream(containerID, processID string) (io.WriteCloser, io.Reader, io.Reader, error)
+
+	AddInterface(inf *grpc.Interface) (*grpc.Interface, error)
+	RemoveInterface(inf *grpc.Interface) (*grpc.Interface, error)
+	ListInterfaces() ([]*grpc.Interface, error)
+	UpdateRoutes(routes []*grpc.Route) ([]*grpc.Route, error)
+	ListRoutes() ([]*grpc.Route, error)
 }
 
 // VCContainer is the Container interface

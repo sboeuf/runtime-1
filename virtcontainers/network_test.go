@@ -237,7 +237,7 @@ func TestCreateVirtualNetworkEndpoint(t *testing.T) {
 		EndpointType: VirtualEndpointType,
 	}
 
-	result, err := createVirtualNetworkEndpoint(4, "", DefaultNetInterworkingModel)
+	result, err := createVirtualNetworkEndpoint(4, "", "", "", DefaultNetInterworkingModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestCreateVirtualNetworkEndpointChooseIfaceName(t *testing.T) {
 		EndpointType: VirtualEndpointType,
 	}
 
-	result, err := createVirtualNetworkEndpoint(4, "eth1", DefaultNetInterworkingModel)
+	result, err := createVirtualNetworkEndpoint(4, "eth1", "", "", DefaultNetInterworkingModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +295,7 @@ func TestCreateVirtualNetworkEndpointInvalidArgs(t *testing.T) {
 	}
 
 	for _, d := range failingValues {
-		result, err := createVirtualNetworkEndpoint(d.idx, d.ifName, DefaultNetInterworkingModel)
+		result, err := createVirtualNetworkEndpoint(d.idx, d.ifName, "", "", DefaultNetInterworkingModel)
 		if err == nil {
 			t.Fatalf("expected invalid endpoint for %v, got %v", d, result)
 		}
