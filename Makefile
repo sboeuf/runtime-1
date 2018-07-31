@@ -49,6 +49,11 @@ TARGET = $(BIN_PREFIX)-runtime
 TARGET_OUTPUT = $(CURDIR)/$(TARGET)
 BINLIST += $(TARGET)
 
+NETMON_DIR = netmon
+NETMON_TARGET = $(PROJECT_TYPE)-netmon
+NETMON_TARGET_OUTPUT = $(CURDIR)/$(NETMON_TARGET)
+BINLIST += $(NETMON_TARGET)
+
 DESTDIR := /
 
 installing = $(findstring install,$(MAKECMDGOALS))
@@ -223,7 +228,12 @@ define SHOW_ARCH
   $(shell printf "\\t%s%s\\\n" "$(1)" $(if $(filter $(ARCH),$(1))," (default)",""))
 endef
 
-all: runtime
+all: runtime netmon
+
+netmon: $(NETMON_TARGET_OUTPUT)
+
+$(NETMON_TARGET_OUTPUT): $(SOURCES)
+	$(QUIET_BUILD)(cd $(NETMON_DIR) && go build -i -o $@ -ldflags "-X main.version=$(VERSION)")
 
 runtime: $(TARGET_OUTPUT) $(CONFIG)
 .DEFAULT: default
@@ -416,7 +426,7 @@ install-completions:
 	$(QUIET_INST)install --mode 0644 -D  $(BASH_COMPLETIONS) $(DESTDIR)/$(BASH_COMPLETIONSDIR)/$(notdir $(BASH_COMPLETIONS));
 
 clean:
-	$(QUIET_CLEAN)rm -f $(TARGET) $(CONFIG) $(GENERATED_GO_FILES) $(GENERATED_FILES) $(COLLECT_SCRIPT)
+	$(QUIET_CLEAN)rm -f $(TARGET) $(NETMON_TARGET) $(CONFIG) $(GENERATED_GO_FILES) $(GENERATED_FILES) $(COLLECT_SCRIPT)
 
 show-usage: show-header
 	@printf "• Overview:\n"
