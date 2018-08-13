@@ -257,7 +257,7 @@ func convertInterface(linkAttrs *netlink.LinkAttrs, addrs []netlink.Addr) Interf
 	}
 
 	return Interface{
-		Device:      fmt.Sprintf("tap%s", linkAttrs.Name),
+		Device:      linkAttrs.Name,
 		Name:        linkAttrs.Name,
 		IPAddresses: ipAddrs,
 		Mtu:         uint64(linkAttrs.MTU),
@@ -377,6 +377,8 @@ func (n *netmon) updateRoutesCLI(routes []Route) error {
 		return err
 	}
 
+	n.logger().Debugf("updateRoutesCLI(): routes %+v", routes)
+
 	return n.execKataCmd(kataCLIUpdtRoutesCmd)
 }
 
@@ -422,6 +424,13 @@ func (n *netmon) handleRTMNewLink(ev netlink.LinkUpdate) error {
 	if strings.Contains(linkAttrs.Name, kataSuffix) {
 		n.logger().Debugf("Ignore the interface %s because found %q\n",
 			linkAttrs.Name, kataSuffix)
+		return nil
+	}
+
+	// Check if the interface exist in the internal list.
+	if _, exist := n.netIfaces[int(ev.Index)]; exist {
+		n.logger().Debugf("Ignoring interface %s because already exist",
+			linkAttrs.Name)
 		return nil
 	}
 
@@ -472,20 +481,12 @@ func (n *netmon) handleRTMDelLink(ev netlink.LinkUpdate) error {
 	}
 
 	// Check if the interface exist in the internal list.
-	if _, exist := n.netIfaces[int(ev.Index)]; !exist {
+	iface, exist := n.netIfaces[int(ev.Index)]
+	if !exist {
 		n.logger().Debugf("Ignoring interface %s because not found",
 			linkAttrs.Name)
 		return nil
 	}
-
-	// Get the list of IP addresses associated with this interface.
-	addrs, err := n.netHandler.AddrList(ev.Link, netlinkFamily)
-	if err != nil {
-		return err
-	}
-
-	// Convert the interfaces in the appropriate structure format.
-	iface := convertInterface(linkAttrs, addrs)
 
 	if err := n.delInterfaceCLI(iface); err != nil {
 		return err
