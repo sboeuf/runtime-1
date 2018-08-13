@@ -1035,6 +1035,7 @@ func (s *Sandbox) AddInterface(inf *grpc.Interface) (*grpc.Interface, error) {
 	}
 
 	// Add network for vm
+	inf.PciAddr = endpoint.PCIAddr
 	return s.agent.updateInterface(inf)
 }
 

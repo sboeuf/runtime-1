@@ -258,7 +258,7 @@ func (endpoint *VirtualEndpoint) HotAttach(h hypervisor) error {
 		return err
 	}
 
-	if _, err := h.hotplugAddDevice(*endpoint, netDev); err != nil {
+	if _, err := h.hotplugAddDevice(endpoint, netDev); err != nil {
 		networkLogger().WithError(err).Error("Error attach virtual ep")
 		return err
 	}
@@ -274,11 +274,10 @@ func (endpoint *VirtualEndpoint) HotDetach(h hypervisor, netNsCreated bool, netN
 	if err := doNetNS(netNsPath, func(_ ns.NetNS) error {
 		return xconnectVMNetwork(&(endpoint.NetPair), false)
 	}); err != nil {
-		networkLogger().WithError(err).Error("Error abridging virtual ep")
-		return err
+		networkLogger().WithError(err).Warn("Error un-bridging virtual ep")
 	}
 
-	if _, err := h.hotplugRemoveDevice(*endpoint, netDev); err != nil {
+	if _, err := h.hotplugRemoveDevice(endpoint, netDev); err != nil {
 		networkLogger().WithError(err).Error("Error detach virtual ep")
 		return err
 	}
