@@ -1314,7 +1314,7 @@ func deleteNetNS(netNSPath string) error {
 	return nil
 }
 
-func createVirtualNetworkEndpoint(idx int, ifName, tapName, hwAddr string, interworkingModel NetInterworkingModel) (*VirtualEndpoint, error) {
+func createVirtualNetworkEndpoint(idx int, ifName string, interworkingModel NetInterworkingModel) (*VirtualEndpoint, error) {
 	if idx < 0 {
 		return &VirtualEndpoint{}, fmt.Errorf("invalid network endpoint index: %d", idx)
 	}
@@ -1329,13 +1329,13 @@ func createVirtualNetworkEndpoint(idx int, ifName, tapName, hwAddr string, inter
 		// at the time of hypervisor attach and not here
 		NetPair: NetworkInterfacePair{
 			ID:   uniqueID,
-			Name: fmt.Sprintf("br%d", idx),
+			Name: fmt.Sprintf("br%d_kata", idx),
 			VirtIface: NetworkInterface{
 				Name:     fmt.Sprintf("eth%d", idx),
 				HardAddr: hardAddr.String(),
 			},
 			TAPIface: NetworkInterface{
-				Name: fmt.Sprintf("tap%d", idx),
+				Name: fmt.Sprintf("tap%d_kata", idx),
 			},
 			NetInterworkingModel: interworkingModel,
 		},
@@ -1345,7 +1345,7 @@ func createVirtualNetworkEndpoint(idx int, ifName, tapName, hwAddr string, inter
 	if ifName != "" {
 		endpoint.NetPair.VirtIface.Name = ifName
 	}
-
+/*
 	if tapName != "" {
 		endpoint.NetPair.TAPIface.Name = tapName
 	}
@@ -1353,7 +1353,7 @@ func createVirtualNetworkEndpoint(idx int, ifName, tapName, hwAddr string, inter
 	if hwAddr != "" {
 		endpoint.NetPair.TAPIface.HardAddr = hwAddr
 	}
-
+*/
 	return endpoint, nil
 }
 
@@ -1450,7 +1450,7 @@ func createEndpointsFromScan(networkNSPath string, config NetworkConfig) ([]Endp
 					cnmLogger().WithField("interface", netInfo.Iface.Name).Info("VhostUser network interface found")
 					endpoint, err = createVhostUserEndpoint(netInfo, socketPath)
 				} else {
-					endpoint, err = createVirtualNetworkEndpoint(idx, netInfo.Iface.Name, "", "", config.InterworkingModel)
+					endpoint, err = createVirtualNetworkEndpoint(idx, netInfo.Iface.Name, config.InterworkingModel)
 				}
 			}
 

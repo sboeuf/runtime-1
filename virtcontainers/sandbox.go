@@ -1017,7 +1017,7 @@ func (s *Sandbox) AddInterface(inf *grpc.Interface) (*grpc.Interface, error) {
 		return nil, err
 	}
 
-	endpoint, err := createVirtualNetworkEndpoint(len(s.networkNS.Endpoints), inf.Name, inf.Device, inf.HwAddr, s.config.NetworkConfig.InterworkingModel)
+	endpoint, err := createVirtualNetworkEndpoint(3, inf.Name, s.config.NetworkConfig.InterworkingModel)
 	if err != nil {
 		return nil, err
 	}
