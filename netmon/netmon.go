@@ -47,6 +47,7 @@ type Interface struct {
 	IPAddresses []*IPAddress `json:"IPAddresses,omitempty"`
 	Mtu         uint64       `json:"mtu,omitempty"`
 	HwAddr      string       `json:"hwAddr,omitempty"`
+	PciAddr     string       `json:"pciAddr,omitempty"`
 }
 
 // Route describes the network route format expected by Kata API.
