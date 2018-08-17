@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
@@ -971,9 +970,6 @@ func (s *Sandbox) SetupNetwork() error {
 	if err := s.network.add(s); err != nil {
 		return err
 	}
-
-	// TODO: to be removed
-	time.Sleep(time.Second)
 
 	// Store the updated network info (including the endpoints).
 	if err := s.storage.storeSandboxNetwork(s.id, s.networkNS); err != nil {
