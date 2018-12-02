@@ -9,6 +9,7 @@ const (
 	blockDeviceSupport = 1 << iota
 	blockDeviceHotplugSupport
 	multiQueueSupport
+	plan9FSUnsupported
 )
 
 type capabilities struct {
@@ -46,4 +47,15 @@ func (caps *capabilities) isMultiQueueSupported() bool {
 
 func (caps *capabilities) setMultiQueueSupport() {
 	caps.flags |= multiQueueSupport
+}
+
+func (caps *capabilities) is9pSupported() bool {
+	if caps.flags&plan9FSUnsupported == 0 {
+		return true
+	}
+	return false
+}
+
+func (caps *capabilities) set9pUnsupported() {
+	caps.flags |= plan9FSUnsupported
 }
