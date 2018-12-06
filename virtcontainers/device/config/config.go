@@ -98,6 +98,9 @@ type BlockDrive struct {
 	// Index assigned to the drive. In case of virtio-scsi, this is used as SCSI LUN index
 	Index int
 
+	// MmioAddr is used to identify the slot at which the drive is attached (order?).
+	MmioAddr string
+
 	// PCIAddr is the PCI address used to identify the slot at which the drive is attached.
 	PCIAddr string
 

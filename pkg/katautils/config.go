@@ -296,8 +296,8 @@ func (h hypervisor) blockDeviceDriver() (string, error) {
 		return defaultBlockDeviceDriver, nil
 	}
 
-	if h.BlockDeviceDriver != vc.VirtioSCSI && h.BlockDeviceDriver != vc.VirtioBlock {
-		return "", fmt.Errorf("Invalid value %s provided for hypervisor block storage driver, can be either %s or %s", h.BlockDeviceDriver, vc.VirtioSCSI, vc.VirtioBlock)
+	if h.BlockDeviceDriver != vc.VirtioSCSI && h.BlockDeviceDriver != vc.VirtioBlock && h.BlockDeviceDriver != vc.VirtioMmio {
+		return "", fmt.Errorf("Invalid value %s provided for hypervisor block storage driver, can be either %s or %s or %s", h.BlockDeviceDriver, vc.VirtioSCSI, vc.VirtioBlock, vc.VirtioMmio)
 	}
 
 	return h.BlockDeviceDriver, nil
