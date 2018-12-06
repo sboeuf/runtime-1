@@ -59,6 +59,7 @@ var (
 	// CAP_NET_BIND_SERVICE capability may bind to these port numbers.
 	vSockPort            = 1024
 	kata9pDevType        = "9p"
+	kataMmioBlkDevType   = "mmioblk"
 	kataBlkDevType       = "blk"
 	kataSCSIDevType      = "scsi"
 	sharedDir9pOptions   = []string{"trans=virtio,version=9p2000.L,cache=mmap", "nodev"}
@@ -847,7 +848,10 @@ func (k *kataAgent) appendDevices(deviceList []*grpc.Device, c *Container) []*gr
 			ContainerPath: dev.ContainerPath,
 		}
 
-		if d.SCSIAddr == "" {
+		if d.VirtPath != "" {
+			kataDevice.Type = kataMmioBlkDevType
+			kataDevice.Id = d.VirtPath
+		} else if d.SCSIAddr == "" {
 			kataDevice.Type = kataBlkDevType
 			kataDevice.Id = d.PCIAddr
 		} else {
@@ -899,7 +903,10 @@ func (k *kataAgent) buildContainerRootfs(sandbox *Sandbox, c *Container, rootPat
 			return nil, fmt.Errorf("malformed block drive")
 		}
 
-		if sandbox.config.HypervisorConfig.BlockDeviceDriver == VirtioBlock {
+		if sandbox.config.HypervisorConfig.BlockDeviceDriver == VirtioMmio {
+			rootfs.Driver = kataMmioBlkDevType
+			rootfs.Source = blockDrive.MmioAddr
+		} else if sandbox.config.HypervisorConfig.BlockDeviceDriver == VirtioBlock {
 			rootfs.Driver = kataBlkDevType
 			rootfs.Source = blockDrive.PCIAddr
 		} else {
@@ -1105,6 +1112,9 @@ func (k *kataAgent) handleBlockVolumes(c *Container) []*grpc.Storage {
 		if c.sandbox.config.HypervisorConfig.BlockDeviceDriver == VirtioBlock {
 			vol.Driver = kataBlkDevType
 			vol.Source = blockDrive.PCIAddr
+		} else if c.sandbox.config.HypervisorConfig.BlockDeviceDriver == VirtioMmio {
+			vol.Driver = kataMmioBlkDevType
+			vol.Source = blockDrive.VirtPath
 		} else {
 			vol.Driver = kataSCSIDevType
 			vol.Source = blockDrive.SCSIAddr
