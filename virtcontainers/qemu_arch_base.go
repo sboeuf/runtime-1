@@ -128,7 +128,11 @@ const (
 // 0 is reserved.
 const bridgePCIStartAddr = 2
 
+//TODO: This should be a hypervisor agnostic definition
 const (
+	// VirtioMmio means use virtio-mmio for mmio based drives
+	VirtioMmio = "virtio-mmio"
+
 	// VirtioBlock means use virtio-blk for hotplugging drives
 	VirtioBlock = "virtio-blk"
 

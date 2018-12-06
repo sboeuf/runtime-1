@@ -73,8 +73,13 @@ func (device *BlockDevice) Attach(devReceiver api.DeviceReceiver) (err error) {
 	}
 
 	customOptions := device.DeviceInfo.DriverOptions
-	if customOptions != nil && customOptions["block-driver"] == "virtio-blk" {
-		drive.VirtPath = filepath.Join("/dev", driveName)
+	if customOptions != nil {
+		if customOptions["block-driver"] == "virtio-blk" {
+			drive.VirtPath = filepath.Join("/dev", driveName)
+		}
+		if customOptions["block-driver"] == "virtio-mmio" {
+			drive.VirtPath = filepath.Join("/dev", driveName)
+		}
 	} else {
 		scsiAddr, err := utils.GetSCSIAddress(index)
 		if err != nil {
