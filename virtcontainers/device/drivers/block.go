@@ -67,17 +67,23 @@ func (device *BlockDevice) Attach(devReceiver api.DeviceReceiver) (err error) {
 		Index:  index,
 	}
 
-	driveName, err := utils.GetVirtDriveName(index)
-	if err != nil {
-		return err
-	}
-
 	customOptions := device.DeviceInfo.DriverOptions
 	if customOptions != nil {
 		if customOptions["block-driver"] == "virtio-blk" {
+			driveName, err := utils.GetVirtDriveName(index)
+			if err != nil {
+				return err
+			}
 			drive.VirtPath = filepath.Join("/dev", driveName)
 		}
 		if customOptions["block-driver"] == "virtio-mmio" {
+			//With firecracker the rootfs for the VM itself
+			//sits at /dev/vda
+			//TODO: Track the VM rootfs if it is a block device
+			driveName, err := utils.GetVirtDriveName(index + 1)
+			if err != nil {
+				return err
+			}
 			drive.VirtPath = filepath.Join("/dev", driveName)
 		}
 	} else {
