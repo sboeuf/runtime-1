@@ -64,4 +64,6 @@ type resourceStorage interface {
 	storeContainerMounts(sandboxID, containerID string, mounts []Mount) error
 	fetchContainerDevices(sandboxID, containerID string) ([]ContainerDevice, error)
 	storeContainerDevices(sandboxID, containerID string, devices []ContainerDevice) error
+
+	createSandboxTempFile(sandboxID string) (string, error)
 }
