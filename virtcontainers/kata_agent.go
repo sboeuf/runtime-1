@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -252,7 +253,14 @@ func (k *kataAgent) configure(h hypervisor, id, sharePath string, builtin bool, 
 		k.proxyBuiltIn = true
 	}
 
-	// Adding the shared volume.
+	// Neither create shared directory nor add 9p device if hypervisor
+	// doesn't support 9p.
+	caps := h.capabilities()
+	if !caps.is9pSupported() {
+		return nil
+	}
+
+	// Create shared directory and add the shared volume if 9p is supported.
 	// This volume contains all bind mounted container bundles.
 	sharedVolume := Volume{
 		MountTag: mountGuest9pTag,
@@ -612,22 +620,28 @@ func (k *kataAgent) startSandbox(sandbox *Sandbox) error {
 		return err
 	}
 
-	sharedDir9pOptions = append(sharedDir9pOptions, fmt.Sprintf("msize=%d", sandbox.config.HypervisorConfig.Msize9p))
+	storages := []*grpc.Storage{}
+	caps := sandbox.hypervisor.capabilities()
 
-	// We mount the shared directory in a predefined location
-	// in the guest.
-	// This is where at least some of the host config files
-	// (resolv.conf, etc...) and potentially all container
-	// rootfs will reside.
-	sharedVolume := &grpc.Storage{
-		Driver:     kata9pDevType,
-		Source:     mountGuest9pTag,
-		MountPoint: kataGuestSharedDir,
-		Fstype:     type9pFs,
-		Options:    sharedDir9pOptions,
+	// append 9p shared volume to storages only if 9p is supported
+	if caps.is9pSupported() {
+		sharedDir9pOptions = append(sharedDir9pOptions, fmt.Sprintf("msize=%d", sandbox.config.HypervisorConfig.Msize9p))
+
+		// We mount the shared directory in a predefined location
+		// in the guest.
+		// This is where at least some of the host config files
+		// (resolv.conf, etc...) and potentially all container
+		// rootfs will reside.
+		sharedVolume := &grpc.Storage{
+			Driver:     kata9pDevType,
+			Source:     mountGuest9pTag,
+			MountPoint: kataGuestSharedDir,
+			Fstype:     type9pFs,
+			Options:    sharedDir9pOptions,
+		}
+
+		storages = append(storages, sharedVolume)
 	}
-
-	storages := []*grpc.Storage{sharedVolume}
 
 	if sandbox.shmSize > 0 {
 		path := filepath.Join(kataGuestSandboxDir, shmDir)
@@ -1490,6 +1504,9 @@ func (k *kataAgent) installReqFunc(c *kataclient.AgentClient) {
 	k.reqHandlers["grpc.GuestDetailsRequest"] = func(ctx context.Context, req interface{}, opts ...golangGrpc.CallOption) (interface{}, error) {
 		return k.client.GetGuestDetails(ctx, req.(*grpc.GuestDetailsRequest), opts...)
 	}
+	k.reqHandlers["grpc.CopyFileRequest"] = func(ctx context.Context, req interface{}, opts ...golangGrpc.CallOption) (interface{}, error) {
+		return k.client.CopyFile(ctx, req.(*grpc.CopyFileRequest), opts...)
+	}
 	k.reqHandlers["grpc.SetGuestDateTimeRequest"] = func(ctx context.Context, req interface{}, opts ...golangGrpc.CallOption) (interface{}, error) {
 		return k.client.SetGuestDateTime(ctx, req.(*grpc.SetGuestDateTimeRequest), opts...)
 	}
@@ -1707,4 +1724,36 @@ func (k *kataAgent) convertToRoutes(aRoutes []*aTypes.Route) (routes []*types.Ro
 	}
 
 	return routes
+}
+
+func (k *kataAgent) copyFile(src, dst string) error {
+	st, err := os.Stat(src)
+	if err != nil {
+		return fmt.Errorf("Could get file %s information", src)
+	}
+
+	b, err := ioutil.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("Could not read file %s", src)
+	}
+
+	k.Logger().WithFields(logrus.Fields{
+		"source": src,
+		"dest":   dst,
+	}).Debugf("Copying file from host to guest")
+
+	cpReq := &grpc.CopyFileRequest{
+		Content:  b,
+		Path:     dst,
+		Offset:   0,
+		DirMode:  uint32(dirMode),
+		FileMode: uint32(st.Mode().Perm()),
+		FileSize: st.Size(),
+	}
+
+	if _, err = k.sendReq(cpReq); err != nil {
+		fmt.Errorf("Could not send CopyFile request: %v", err)
+	}
+
+	return nil
 }

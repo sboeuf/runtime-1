@@ -247,6 +247,10 @@ func (p *gRPCProxy) SetGuestDateTime(ctx context.Context, req *pb.SetGuestDateTi
 	return &gpb.Empty{}, nil
 }
 
+func (p *gRPCProxy) CopyFile(ctx context.Context, req *pb.CopyFileRequest) (*gpb.Empty, error) {
+	return &gpb.Empty{}, nil
+}
+
 func gRPCRegister(s *grpc.Server, srv interface{}) {
 	switch g := srv.(type) {
 	case *gRPCProxy:

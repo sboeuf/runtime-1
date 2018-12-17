@@ -477,16 +477,26 @@ func (c *Container) mountSharedDirMounts(hostSharedDir, guestSharedDir string) (
 			return nil, err
 		}
 
-		// These mounts are created in the shared dir
 		filename := fmt.Sprintf("%s-%s-%s", c.id, hex.EncodeToString(randBytes), filepath.Base(m.Destination))
-		mountDest := filepath.Join(hostSharedDir, c.sandbox.id, filename)
+		guestSource := filepath.Join(guestSharedDir, filename)
 
-		if err := bindMount(c.ctx, m.Source, mountDest, false); err != nil {
-			return nil, err
+		// copy file to contaier's rootfs if 9p is not supported, otherwise
+		// bind mount it in the shared directory.
+		caps := c.sandbox.hypervisor.capabilities()
+		if !caps.is9pSupported() {
+			// 9p is not supported, files must be copied
+			if err := c.sandbox.agent.copyFile(m.Source, guestSource); err != nil {
+				return nil, err
+			}
+		} else {
+			// These mounts are created in the shared dir
+			mountDest := filepath.Join(hostSharedDir, c.sandbox.id, filename)
+			if err := bindMount(c.ctx, m.Source, mountDest, false); err != nil {
+				return nil, err
+			}
+			// Save HostPath mount value into the mount list of the container.
+			c.mounts[idx].HostPath = mountDest
 		}
-
-		// Save HostPath mount value into the mount list of the container.
-		c.mounts[idx].HostPath = mountDest
 
 		// Check if mount is readonly, let the agent handle the readonly mount
 		// within the VM.
@@ -498,7 +508,7 @@ func (c *Container) mountSharedDirMounts(hostSharedDir, guestSharedDir string) (
 		}
 
 		sharedDirMount := Mount{
-			Source:      filepath.Join(guestSharedDir, filename),
+			Source:      guestSource,
 			Destination: m.Destination,
 			Type:        m.Type,
 			Options:     m.Options,
