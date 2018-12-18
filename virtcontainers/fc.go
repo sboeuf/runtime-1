@@ -605,8 +605,8 @@ func (fc *firecracker) capabilities() capabilities {
 	span, _ := fc.trace("capabilities")
 	defer span.Finish()
 	var caps capabilities
-	//caps.set9pUnsupported()
-	//caps.setHotplugUnsupported()
+	caps.set9pUnsupported()
+	caps.setBlockDeviceHotplugSupport()
 
 	return caps
 }
