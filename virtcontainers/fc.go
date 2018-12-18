@@ -338,7 +338,7 @@ func (fc *firecracker) startSandbox() error {
 		}
 	}
 
-	return nil
+	return fc.fcStartVM()
 }
 
 func (fc *firecracker) createDiskPool() error {
