@@ -411,7 +411,7 @@ func createLink(netHandle *netlink.Handle, name string, expectedLink netlink.Lin
 			LinkAttrs: netlink.LinkAttrs{Name: name},
 			Mode:      netlink.TUNTAP_MODE_TAP,
 			Queues:    queues,
-			Flags:     netlink.TUNTAP_MULTI_QUEUE_DEFAULTS | netlink.TUNTAP_VNET_HDR,
+			Flags:     netlink.TUNTAP_VNET_HDR,
 		}
 	case (&netlink.Macvtap{}).Type():
 		qlen := expectedLink.Attrs().TxQLen
