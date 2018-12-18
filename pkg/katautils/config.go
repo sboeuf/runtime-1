@@ -554,8 +554,10 @@ func updateRuntimeConfigHypervisor(configPath string, tomlConf tomlConfig, confi
 
 		switch k {
 		case firecrackerHypervisorTableType:
+			config.HypervisorType = vc.FirecrackerHypervisor
 			hConfig, err = newFirecrackerHypervisorConfig(hypervisor)
 		case qemuHypervisorTableType:
+			config.HypervisorType = vc.QemuHypervisor
 			hConfig, err = newQemuHypervisorConfig(hypervisor)
 		}
 

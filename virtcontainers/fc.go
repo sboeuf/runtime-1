@@ -578,3 +578,11 @@ func (fc *firecracker) getThreadIDs() (*threadIDs, error) {
 	// of get /machine-config
 	return nil, nil
 }
+
+func (fc *firecracker) resizeMemory(reqMemMB uint32, memoryBlockSizeMB uint32) (uint32, error) {
+	return 0, nil
+}
+
+func (fc *firecracker) resizeVCPUs(reqVCPUs uint32) (currentVCPUs uint32, newVCPUs uint32, err error) {
+	return 0, 0, nil
+}
