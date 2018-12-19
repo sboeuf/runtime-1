@@ -257,7 +257,6 @@ func (fc *firecracker) fcInit(timeout int) error {
 	}
 
 	fc.state.set(apiReady)
-
 	return nil
 }
 
@@ -330,7 +329,6 @@ func (fc *firecracker) fcStartVM() error {
 	}
 
 	fc.state.set(vmReady)
-
 	return nil
 }
 
@@ -560,7 +558,10 @@ func (fc *firecracker) fcUpdateBlockDrive(drive config.BlockDrive) error {
 	_, err = fc.client.Operations.CreateSyncAction(actionParams)
 	if err != nil {
 		fc.Logger().WithField("fcUpdateBlockDrive BlockDeviceRescan failed:", err).Debug()
-		return err
+		fc.Logger().WithField("VM state:", fc.state.state).Debug()
+		//return err
+		//FIXME: We should rescan only if the VM has been launched
+		return nil
 	}
 
 	return nil
