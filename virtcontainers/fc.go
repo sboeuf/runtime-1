@@ -564,7 +564,7 @@ func (fc *firecracker) addDevice(devInfo interface{}, devType deviceType) error 
 	return nil
 }
 
-// hotplugAddDevice not supported in Firecracker VMM
+// hotplugAddDevice supported in Firecracker VMM
 func (fc *firecracker) hotplugAddDevice(devInfo interface{}, devType deviceType) (interface{}, error) {
 	span, _ := fc.trace("hotplugAddDevice")
 	defer span.Finish()
@@ -582,9 +582,9 @@ func (fc *firecracker) hotplugAddDevice(devInfo interface{}, devType deviceType)
 	return nil, nil
 }
 
-// hotplugRemoveDevice not supported in Firecracker VMM
+// hotplugRemoveDevice supported in Firecracker VMM, but no-op
 func (fc *firecracker) hotplugRemoveDevice(devInfo interface{}, devType deviceType) (interface{}, error) {
-	return nil, fmt.Errorf("firecracker does not support hotplugRemoveDevice")
+	return nil, nil
 }
 
 // getSandboxConsole builds the path of the console where we can read
