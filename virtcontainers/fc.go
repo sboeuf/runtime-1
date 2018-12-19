@@ -6,6 +6,7 @@
 package virtcontainers
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -203,7 +204,42 @@ func (fc *firecracker) fcInit(timeout int) error {
 	args := []string{"--api-sock", fc.socketPath}
 
 	cmd := exec.Command(fc.config.HypervisorPath, args...)
-	err := cmd.Start()
+	//TODO: Find a clearer way to capture VMM logs (using the FIFOs?)
+	// Find a way to access the logs beyond the lifetime of the create command
+	//Also re-parent this properly
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		fc.Logger().WithField("Error getting firecracker stderr", err).Debug()
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fc.Logger().WithField("Error getting firecracker stdout", err).Debug()
+	}
+
+	go func() {
+		br := bufio.NewReader(stdout)
+		for {
+			line, _, err := br.ReadLine()
+			if err != nil {
+				fmt.Println("stdout err:", err)
+				return
+			}
+			fmt.Println("stdout:", string(line))
+		}
+	}()
+	go func() {
+		br := bufio.NewReader(stderr)
+		for {
+			line, _, err := br.ReadLine()
+			if err != nil {
+				fmt.Println("stderr err:", err)
+				return
+			}
+			fmt.Println("stderr:", string(line))
+		}
+	}()
+
+	err = cmd.Start()
 	if err != nil {
 		fc.Logger().WithField("Error starting firecracker", err).Debug()
 		os.Exit(1)
