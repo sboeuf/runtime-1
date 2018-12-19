@@ -7,6 +7,7 @@ package virtcontainers
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 	"syscall"
@@ -28,6 +29,7 @@ var virtLog = logrus.WithField("source", "virtcontainers")
 // trace creates a new tracing span based on the specified name and parent
 // context.
 func trace(parent context.Context, name string) (opentracing.Span, context.Context) {
+	fmt.Println("trace: api:", name)
 	span, ctx := opentracing.StartSpanFromContext(parent, name)
 
 	// Should not need to be changed (again).

@@ -105,6 +105,7 @@ func (fc *firecracker) Logger() *logrus.Entry {
 }
 
 func (fc *firecracker) trace(name string) (opentracing.Span, context.Context) {
+	fmt.Println("trace: fc:", name)
 	if fc.ctx == nil {
 		fc.Logger().WithField("type", "bug").Error("trace called before context set")
 		fc.ctx = context.Background()
@@ -426,16 +427,20 @@ func (fc *firecracker) stopSandbox() error {
 
 	fc.Logger().Info("Stopping Sandbox")
 
-	actionParams := ops.NewCreateSyncActionParams()
-	actionInfo := &models.InstanceActionInfo{
-		ActionType: "InstanceHalt",
-	}
-	actionParams.SetInfo(actionInfo)
-	_, err := fc.client.Operations.CreateSyncAction(actionParams)
-	if err != nil {
-		fc.Logger().WithField("stopSandbox failed:", err).Debug()
-		return err
-	}
+	return nil
+
+	/*
+		actionParams := ops.NewCreateSyncActionParams()
+		actionInfo := &models.InstanceActionInfo{
+			ActionType: "InstanceHalt",
+		}
+		actionParams.SetInfo(actionInfo)
+		_, err := fc.client.Operations.CreateSyncAction(actionParams)
+		if err != nil {
+			fc.Logger().WithField("stopSandbox failed:", err).Debug()
+			return err
+		}
+	*/
 
 	return nil
 }

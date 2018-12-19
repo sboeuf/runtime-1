@@ -364,6 +364,7 @@ type SandboxConfig struct {
 }
 
 func (s *Sandbox) trace(name string) (opentracing.Span, context.Context) {
+	fmt.Println("trace: sandbox:", name)
 	if s.ctx == nil {
 		s.Logger().WithField("type", "bug").Error("trace called before context set")
 		s.ctx = context.Background()
