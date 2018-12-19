@@ -85,6 +85,7 @@ func (device *BlockDevice) Attach(devReceiver api.DeviceReceiver) (err error) {
 				return err
 			}
 			drive.VirtPath = filepath.Join("/dev", driveName)
+			drive.MmioAddr = drive.VirtPath
 		}
 	} else {
 		scsiAddr, err := utils.GetSCSIAddress(index)
