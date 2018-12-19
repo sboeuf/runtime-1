@@ -101,7 +101,8 @@ func (s *Sandbox) applyCPUCgroup(rc *specs.LinuxResources) error {
 	// have to query fresh vcpu info from hypervisor for every time.
 	tids, err := s.hypervisor.getThreadIDs()
 	if err != nil || tids == nil {
-		return fmt.Errorf("failed to get thread ids from hypervisor: %v", err)
+		//return fmt.Errorf("failed to get thread ids from hypervisor: %v", err)
+		return nil
 	}
 
 	// use Add() to add vcpu thread to s.cgroup, it will write thread id to
