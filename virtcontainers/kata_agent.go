@@ -851,6 +851,7 @@ func (k *kataAgent) appendDevices(deviceList []*grpc.Device, c *Container) []*gr
 		if d.VirtPath != "" {
 			kataDevice.Type = kataMmioBlkDevType
 			kataDevice.Id = d.VirtPath
+			kataDevice.VmPath = d.VirtPath
 		} else if d.SCSIAddr == "" {
 			kataDevice.Type = kataBlkDevType
 			kataDevice.Id = d.PCIAddr
